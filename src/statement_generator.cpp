@@ -67,14 +67,19 @@ std::shared_ptr<GeneratorContext> StatementGenerator::GetDatabaseState(ClientCon
 	// extract the functions
 	for (auto &schema_ref : schemas) {
 		auto &schema = schema_ref.get();
-		schema.Scan(context, CatalogType::SCALAR_FUNCTION_ENTRY,
-		            [&](CatalogEntry &entry) { result->scalar_functions.push_back(entry); });
+		schema.Scan(context, CatalogType::SCALAR_FUNCTION_ENTRY, [&](CatalogEntry &entry) {
+			// exclude internal functions (prefixed with '__')
+			if (entry.name.GetIdentifierName().compare(0, 2, "__") != 0) {
+				result->scalar_functions.push_back(entry);
+			}
+		});
 		schema.Scan(context, CatalogType::TABLE_FUNCTION_ENTRY, [&](CatalogEntry &entry) {
-			// don't include fuzz functions
+			// don't include fuzz functions and internal functions (prefixed with '__')
 			if (entry.name.GetIdentifierName().find("fuzzyduck") == std::string::npos &&
 			    entry.name.GetIdentifierName().find("fuzz_all_functions") == std::string::npos &&
 			    entry.name.GetIdentifierName().find("reduce_sql_statement") == std::string::npos &&
-			    entry.name.GetIdentifierName().find("sqlsmith") == std::string::npos) {
+			    entry.name.GetIdentifierName().find("sqlsmith") == std::string::npos &&
+				entry.name.GetIdentifierName().compare(0, 2, "__") != 0) {
 				result->table_functions.push_back(entry);
 			}
 		});
